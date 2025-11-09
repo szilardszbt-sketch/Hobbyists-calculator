@@ -4,13 +4,14 @@ import { DynamicField } from './types';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import AdPlaceholder from './components/AdPlaceholder';
-import SeoContent from './components/SeoContent';
+import IntroContent from './components/IntroContent';
 import CalculatorCard from './components/CalculatorCard';
 import InputField from './components/InputField';
 import OutputDisplay from './components/OutputDisplay';
 import AiSuggestionBox from './components/AiSuggestionBox';
 import SaveOptions from './components/SaveOptions';
 import InspirationSection from './components/InspirationSection';
+import HobbyGuide from './components/HobbyGuide';
 
 const DroneIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" viewBox="0 0 24 24" fill="currentColor"><path d="M22 14.654a1 1 0 0 0-1.414-.924l-3.351 1.543a5.034 5.034 0 0 0-1.127-3.051l1.543-3.352a1 1 0 0 0-.924-1.414L14.654 2H9.346l-2.078 2.078a1 1 0 0 0-.924 1.414l1.543 3.352a5.034 5.034 0 0 0-3.051 1.127L3.393 8.428a1 1 0 0 0-1.414.924L2 14.654v4.692l2.078-2.078a1 1 0 0 0 1.414.924l3.352-1.543a5.034 5.034 0 0 0 1.127 3.051l-1.543 3.352a1 1 0 0 0 .924 1.414L9.346 22h5.308l2.078-2.078a1 1 0 0 0 .924-1.414l-1.543-3.352a5.034 5.034 0 0 0 3.051-1.127l3.352 1.543a1 1 0 0 0 1.414-.924L22 14.654V9.346l-2.078 2.078zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/></svg>;
 const SparklesIcon = () => <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-indigo-500" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.25a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3a.75.75 0 0 1 .75-.75zM12 18a.75.75 0 0 1 .75.75v3a.75.75 0 0 1-1.5 0v-3A.75.75 0 0 1 12 18zM5.25 12a.75.75 0 0 1-.75-.75h-3a.75.75 0 0 1 0-1.5h3a.75.75 0 0 1 .75.75zM21 12a.75.75 0 0 1-.75-.75h-3a.75.75 0 0 1 0-1.5h3a.75.75 0 0 1 .75.75zM7.336 7.336a.75.75 0 0 1 1.06 0l2.122 2.121a.75.75 0 1 1-1.06 1.06L7.336 8.397a.75.75 0 0 1 0-1.06zm9.192 9.192a.75.75 0 0 1 1.06 0l2.122 2.121a.75.75 0 0 1-1.06 1.06l-2.121-2.122a.75.75 0 0 1 0-1.06zM16.528 7.336a.75.75 0 0 1 0 1.06L14.407 10.52a.75.75 0 1 1-1.06-1.06l2.121-2.122a.75.75 0 0 1 1.06 0zM8.397 16.528a.75.75 0 0 1 0 1.06L6.275 19.71a.75.75 0 1 1-1.06-1.06l2.122-2.121a.75.75 0 0 1 1.06 0z"/></svg>;
@@ -23,6 +24,8 @@ interface MainCalculatorState {
   suggestion: string | null;
   isLoadingSuggestion: boolean;
   imageUrl: string | null;
+  guideContent: string | null;
+  isLoadingGuide: boolean;
 }
 
 const initialDefaultCalculatorState: MainCalculatorState = {
@@ -40,6 +43,8 @@ const initialDefaultCalculatorState: MainCalculatorState = {
   suggestion: null,
   isLoadingSuggestion: false,
   imageUrl: null,
+  guideContent: null,
+  isLoadingGuide: false,
 };
 
 const currencyOptions = {
@@ -85,6 +90,29 @@ function App() {
   useEffect(() => { localStorage.setItem('hobbyist-compass-mainCalculator', JSON.stringify(calculator)); }, [calculator]);
   useEffect(() => { localStorage.setItem('hobbyist-compass-currency', JSON.stringify(currency)); }, [currency]);
 
+  const generateGuide = useCallback(async (hobbyName: string, fields: DynamicField[]) => {
+    try {
+      const componentList = fields.map(f => f.name).slice(0, 5).join(', ');
+      const guidePrompt = `You are an expert hobbyist blogger. Write a short, encouraging, and informative guide for someone considering starting the hobby of '${hobbyName}'. Structure the article with markdown using headings, lists, and bold text. Include a friendly introduction, a section explaining why budgeting is important for this specific hobby, a brief overview of the main cost areas (like ${componentList}), and some smart spending tips. Keep it concise, helpful, and engaging.`;
+      const guideResponse = await ai.models.generateContent({ model: 'gemini-2.5-flash', contents: guidePrompt });
+      setCalculator(prev => ({ ...prev, guideContent: guideResponse.text, isLoadingGuide: false }));
+    } catch (guideError) {
+      console.error("Guide generation error:", guideError);
+      setCalculator(prev => ({ ...prev, guideContent: "Could not load guide content.", isLoadingGuide: false }));
+    }
+  }, [ai]);
+
+  useEffect(() => {
+    const generateDefaultGuide = async () => {
+      if (calculator.isDefault && !calculator.guideContent && !calculator.isLoadingGuide) {
+        setCalculator(prev => ({ ...prev, isLoadingGuide: true }));
+        await generateGuide("Drone Photography and FPV Flying", initialDefaultCalculatorState.fields);
+      }
+    };
+    generateDefaultGuide();
+  }, [calculator.isDefault, calculator.guideContent, calculator.isLoadingGuide, generateGuide]);
+
+
   const handleThemeToggle = () => setIsDarkMode(prev => !prev);
 
   const handleCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +157,7 @@ function App() {
       setSearchQuery(query);
       setIsGeneratingCalculator(true);
       setGeneratorError(null);
-      setCalculator(prev => ({ ...initialDefaultCalculatorState, costs: {}, fields: [], title: 'Generating...', isDefault: false, imageUrl: null }));
+      setCalculator({ ...initialDefaultCalculatorState, costs: {}, fields: [], title: 'Generating...', isDefault: false, imageUrl: null, guideContent: null, isLoadingGuide: true });
 
       const schema = {
           type: Type.OBJECT,
@@ -162,7 +190,7 @@ function App() {
             return acc;
         }, {});
         
-        const newCalculatorState = {
+        const newCalculatorState: MainCalculatorState = {
             title: result.hobbyName,
             isDefault: false,
             fields: result.costComponents,
@@ -170,11 +198,15 @@ function App() {
             suggestion: null,
             isLoadingSuggestion: false,
             imageUrl: null,
+            guideContent: null,
+            isLoadingGuide: true,
         };
 
         setCalculator(newCalculatorState);
         
-        // Now, generate an image for the new calculator
+        // Generate guide and image in parallel
+        generateGuide(result.hobbyName, result.costComponents);
+
         try {
             const imageResponse = await ai.models.generateContent({
                 model: 'gemini-2.5-flash-image',
@@ -192,9 +224,7 @@ function App() {
             }
         } catch (imageError) {
             console.error("Image generation error:", imageError);
-            // Image generation failed, but the calculator itself is fine. The user will see the fallback icon.
         }
-
 
       } catch (error) {
           console.error("Calculator generation error:", error);
@@ -301,7 +331,8 @@ function App() {
       <Header isDarkMode={isDarkMode} onToggleTheme={handleThemeToggle} />
       
       <main className="py-12 px-4">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 mb-8 px-4 sm:px-0">
+        <IntroContent />
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-start sm:items-end gap-6 my-8 px-4 sm:px-0">
           <div>
             <label htmlFor="currency-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300">Choose your currency:</label>
             <select id="currency-select" name="currency" className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 dark:bg-gray-700 dark:border-gray-600 dark:text-white focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm" value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -324,7 +355,6 @@ function App() {
         <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-9">
                 <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                    
                     <div className="xl:col-span-2">
                         {generatorError && <div className="mb-4 text-center p-4 text-red-600 bg-red-100 dark:bg-red-900/50 dark:text-red-300 rounded-lg">{generatorError}</div>}
                         <CalculatorCard title={calculator.title} icon={calculator.isDefault ? <DroneIcon /> : <SparklesIcon />} onReset={handleResetCalculator} isEditable={true} onTitleChange={handleTitleChange} imageUrl={calculator.imageUrl}>
@@ -344,9 +374,20 @@ function App() {
                         </CalculatorCard>
                     </div>
 
-                    <InspirationSection onGenerate={handleGenerateCalculator} />
+                    <div className="xl:col-span-2">
+                        <HobbyGuide
+                            title={calculator.title}
+                            content={calculator.guideContent}
+                            isLoading={calculator.isLoadingGuide}
+                            isDefault={calculator.isDefault}
+                        />
+                    </div>
 
-                    <div className="flex items-center justify-center"><AdPlaceholder type="in-content" /></div>
+                    <div className="xl:col-span-1">
+                        <InspirationSection onGenerate={handleGenerateCalculator} />
+                    </div>
+
+                    <div className="flex items-center justify-center xl:col-span-1"><AdPlaceholder type="in-content" /></div>
                 </div>
             </div>
 
@@ -355,7 +396,7 @@ function App() {
             </aside>
         </div>
       </main>
-      <SeoContent />
+      
       <Footer />
     </div>
   );

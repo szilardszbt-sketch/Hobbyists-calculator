@@ -1,8 +1,8 @@
 import React from 'react';
 
-const SeoContent: React.FC = () => {
+const IntroContent: React.FC = () => {
   return (
-    <section className="bg-white dark:bg-gray-900/50 py-12 px-4">
+    <section className="bg-white dark:bg-gray-900/50 py-12 px-4 rounded-xl shadow-md">
       <div className="max-w-4xl mx-auto">
         <h2 className="text-3xl font-bold text-gray-800 dark:text-gray-200 text-center mb-6">Planning Your Hobby Budget</h2>
         <div className="space-y-4 text-gray-600 dark:text-gray-400 leading-relaxed">
@@ -18,4 +18,4 @@ const SeoContent: React.FC = () => {
   );
 };
 
-export default SeoContent;
+export default IntroContent;
